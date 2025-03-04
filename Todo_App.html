@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプル Todo アプリ</title>
+    <style>
+        /* ベーシックなスタイル */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            background-color: #007BFF;
+            color: white;
+            padding: 15px;
+            margin: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        textarea, button {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        textarea {
+            width: calc(100% - 20px);
+            height: 60px;
+            resize: vertical;
+        }
+        button {
+            cursor: pointer;
+            padding: 5px 8px;
+        }
+        .add-btn {
+            background-color: #007BFF;
+            color: white;
+            width: 100%;
+        }
+        .add-btn:hover {
+            background-color: #0056b3;
+        }
+        .todo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .todo-text {
+            flex-grow: 1;
+            text-align: left;
+            word-break: break-word;
+            white-space: pre-wrap;
+            padding-right: 10px;
+        }
+        .todo-text.completed {
+            text-decoration: line-through;
+            color: gray;
+        }
+        .todo-actions {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-btn {
+            background-color: lightgray;
+            border: none;
+            display: inline-block;
+            white-space: nowrap;
+            padding: 5px 10px;
+        } {
+            background-color: lightgray;
+            border: none;
+        }
+        .status-btn.active {
+            background-color: #007BFF;
+            color: white;
+        }
+        .delete-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            display: inline-block;
+            white-space: nowrap;
+            padding: 5px 10px;
+        } {
+            background-color: red;
+            color: white;
+            border: none;
+        }
+        .delete-btn:hover {
+            background-color: darkred;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Todo リスト <button onclick="exportTodos()">出力</button> <button onclick="importTodos()">読込</button></h1>
+    <div class="container">
+        <textarea id="todo-input" placeholder="新しいTodoを追加..."></textarea>
+        <button onclick="addTodo()" class="add-btn">追加</button>
+        <div id="todo-list"></div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", loadTodos);
+
+        document.getElementById("todo-input").addEventListener("keydown", function(event) {
+            if (event.shiftKey && event.key === "Enter") {
+                event.preventDefault();
+                addTodo();
+            }
+        });
+
+        function addTodo() {
+            let input = document.getElementById("todo-input");
+            let todoText = input.value.trim();
+            if (todoText === "") {
+                alert("Todoを入力してください");
+                return;
+            }
+
+            let todo = {
+                id: Date.now(),
+                text: todoText,
+                status: "未着手"
+            };
+
+            let todos = getTodos();
+            todos.unshift(todo);
+            saveTodos(todos);
+            input.value = "";
+            renderTodos();
+        }
+
+        function deleteTodo(id) {
+            let todos = getTodos().filter(todo => todo.id !== id);
+            saveTodos(todos);
+            renderTodos();
+        }
+
+        function updateStatus(id, status) {
+            let todos = getTodos();
+            let todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.status = status;
+                saveTodos(todos);
+                renderTodos();
+            }
+        }
+
+        function getTodos() {
+            return JSON.parse(localStorage.getItem("todos")) || [];
+        }
+
+        function saveTodos(todos) {
+            localStorage.setItem("todos", JSON.stringify(todos));
+        }
+
+        function editTodo(id, newText) {
+            let todos = getTodos();
+            let todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.text = newText;
+                saveTodos(todos);
+            }
+        }
+
+        function renderTodos() {
+            let todoList = document.getElementById("todo-list");
+            todoList.innerHTML = "";
+
+            getTodos().forEach(todo => {
+                let div = document.createElement("div");
+                div.classList.add("todo-item");
+
+                let text = document.createElement("textarea");
+                text.classList.add("todo-text");
+                text.value = todo.text;
+                text.oninput = () => editTodo(todo.id, text.value);
+                text.classList.add("todo-text");
+                text.textContent = todo.text;
+                if (todo.status === "完了") {
+                    text.classList.add("completed");
+                }
+
+                let actionsDiv = document.createElement("div");
+                actionsDiv.classList.add("todo-actions");
+
+                ["未着手", "仕掛中", "完了"].forEach(status => {
+                    let btn = document.createElement("button");
+                    btn.textContent = status;
+                    btn.classList.add("status-btn");
+                    if (todo.status === status) btn.classList.add("active");
+                    btn.onclick = () => updateStatus(todo.id, status);
+                    actionsDiv.appendChild(btn);
+                });
+
+                let deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "削除";
+                deleteBtn.classList.add("delete-btn");
+                deleteBtn.onclick = () => deleteTodo(todo.id);
+
+                actionsDiv.appendChild(deleteBtn);
+                div.appendChild(text);
+                div.appendChild(actionsDiv);
+                todoList.appendChild(div);
+            });
+        }
+
+        function loadTodos() {
+            renderTodos();
+        }
+            function exportTodos() {
+            let data = JSON.stringify(getTodos(), null, 2);
+            let blob = new Blob([data], { type: "application/json" });
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "todos.json";
+            a.click();
+        }
+
+        function importTodos() {
+            let input = document.createElement("input");
+            input.type = "file";
+            input.accept = "application/json";
+            input.onchange = event => {
+                let file = event.target.files[0];
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    localStorage.setItem("todos", e.target.result);
+                    renderTodos();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+    </script>
+
+</body>
+</html>
